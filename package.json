@@ -1,7 +1,7 @@
 {
-  "name": "koishi-plugin-echoapi",
-  "description": "检测消息内容，并在内容符合预设规则时调用指定 API 生成回应。",
-  "version": "0.0.1",
+  "name": "koishi-plugin-api-handler",
+  "description": "识别以特定前缀开头的消息，并通过POST请求调用API，将API的响应直接作为回复发送。",
+  "version": "1.0.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -13,10 +13,15 @@
   "keywords": [
     "chatbot",
     "koishi",
-    "plugin"
+    "plugin",
+    "api",
+    "handler"
   ],
   "devDependencies": {},
   "peerDependencies": {
     "koishi": "^4.17.9"
-  }
+  },
+  "homepage": "https://github.com/Marchccc/koishi-plugin-api-handler",
+  "repository": "git@github.com:Marchccc/koishi-plugin-api-handler.git",
+  "author": "Marchccc <0x00gc@gmail.com>"
 }
