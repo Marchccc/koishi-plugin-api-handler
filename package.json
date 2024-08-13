@@ -1,0 +1,22 @@
+{
+  "name": "koishi-plugin-echoapi",
+  "description": "检测消息内容，并在内容符合预设规则时调用指定 API 生成回应。",
+  "version": "0.0.1",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "license": "MIT",
+  "scripts": {},
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin"
+  ],
+  "devDependencies": {},
+  "peerDependencies": {
+    "koishi": "^4.17.9"
+  }
+}
