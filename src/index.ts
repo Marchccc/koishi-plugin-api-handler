@@ -1,7 +1,7 @@
 import { Context, Schema, Logger } from 'koishi'
 
 export const usage = `
-## koishi-plugin-api-handler v1.0
+## koishi-plugin-api-handler v1.0.2
 
 1. 配置API地址。
 
@@ -61,10 +61,10 @@ export function handlePrefixes(sessionContent: string, config: Config) {
 export function apply(ctx: Context, config: Config) {
   ctx.middleware(async (session, next) => {
     // console.log(config);
-    // console.log(session);
-    // console.log(session.content);
+    console.log(session);
+    console.log(session.event.message);
+    console.log(session.content);
     let match_prefix = handlePrefixes(session.content, config)
-    let error = null;
     if (match_prefix) {
       logger.info(match_prefix + ':' + session.content)
       const res = await ctx.http.post(config.api, {
