@@ -1,7 +1,7 @@
 import { Context, Schema, Logger } from 'koishi'
 
 export const usage = `
-## koishi-plugin-api-handler v1.0.6
+## koishi-plugin-api-handler v1.1.0
 
 1. 配置API地址。
 
@@ -12,6 +12,9 @@ export const usage = `
 4. 服务器需返回一个字符串，该字符串将作为机器人的回复消息。
 
 注意：只有群内@机器人的消息才会处理。
+
+
+微信配合adapter-wechat4u使用。
 
 `
 
@@ -26,16 +29,37 @@ export interface Config {
   prefix_2: string,
   prefix_3?: string,
   prefix_4?: string,
+  wx_api?: string,
+  wx_token?: string,
+  bot_name?: string,
+  wx_group_all_message?: boolean,
 }
-
-export const Config: Schema<Config> = Schema.object({
-  api: Schema.string().required(true).description('API地址'),
-  token: Schema.string().required(true).description('API接收的token，以POST传递,参数名为token'),
-  prefix_1: Schema.string().required(true).description('消息开头匹配字符串，不区分大小写，完全包含则将用户消息发送到API，由API返回回复内容字符串'),
-  prefix_2: Schema.string().description('匹配消息前缀2'),
-  prefix_3: Schema.string().description('匹配消息前缀3'),
-  prefix_4: Schema.string().description('匹配消息前缀4'),
-})
+export const Config: Schema<Config> = Schema.intersect([
+  Schema.object({
+    api: Schema.string().required(true).description('API地址'),
+    token: Schema.string().required(true).description('API接收的token，以POST传递,参数名为token'),
+    prefix_1: Schema.string().required(true).description('消息开头匹配字符串，不区分大小写，完全包含则将用户消息发送到API，由API返回回复内容字符串'),
+    prefix_2: Schema.string().description('匹配消息前缀2'),
+    prefix_3: Schema.string().description('匹配消息前缀3'),
+    prefix_4: Schema.string().description('匹配消息前缀4'),
+  }).description('基础设置'),
+  Schema.object({
+    wx_api: Schema.string().description('API地址'),
+    wx_token: Schema.string().description('API接收的token，以POST传递,参数名为token'),
+    bot_name: Schema.string().description('wx机器人昵称,用于判定是否@'),
+    wx_group_all_message: Schema.boolean().description('wx群组所有消息都处理'),
+  }).description('微信设置(结合wechat4u使用)'),
+]);
+// export const Config: Schema<Config> = Schema.object({
+//   api: Schema.string().required(true).description('API地址'),
+//   token: Schema.string().required(true).description('API接收的token，以POST传递,参数名为token'),
+//   prefix_1: Schema.string().required(true).description('消息开头匹配字符串，不区分大小写，完全包含则将用户消息发送到API，由API返回回复内容字符串'),
+//   prefix_2: Schema.string().description('匹配消息前缀2'),
+//   prefix_3: Schema.string().description('匹配消息前缀3'),
+//   prefix_4: Schema.string().description('匹配消息前缀4'),
+//   bot_name: Schema.string().description('wx机器人昵称,用于判定是否@'),
+//   wx_group_all_message: Schema.boolean().description('wx群组所有消息都处理'),
+// })
 
 export function startsWithPrefix(str: string, prefix: string) {
   // 首先去掉字符串前后的空格
@@ -63,40 +87,97 @@ export function handlePrefixes(sessionContent: string, config: Config) {
 export function apply(ctx: Context, config: Config) {
   ctx.middleware(async (session, next) => {
 
-    const content = session.content;
+    let content = session.content;
     const botId = session.selfId;
 
+    // logger.info(session);
+    logger.info('群组:' + session.channelId)
     logger.info('原始消息:' + content);
-    logger.info('机器人QQ:' + botId);
+    logger.info('机器人ID:' + botId);
 
-    // 使用正则表达式确保准确匹配特定的提到格式
-    const mentionRegex = new RegExp(`<at id="${botId}"/>`);
-    const isMentioned = content && mentionRegex.test(content);
-    if (!isMentioned) {
+    const mentionRegex2 = new RegExp(`private:`);
+    const isPrivateChat = session.channelId && mentionRegex2.test(session.channelId);
+
+    if (session.platform == 'wechaty') {
+      const mentionRegex = new RegExp(`@${config.bot_name}`);
+      const isMentioned = content && mentionRegex.test(content);
+      let regex = new RegExp(`@${config.bot_name}\\s*`, "g");
+      content = content.replace(regex, "").trim();
+
+      logger.info('是否私聊:' + isPrivateChat);
+      logger.info('是否@:' + isMentioned);
+      logger.info('过滤@后的内容:' + content);
+
+      // 非私聊、非群组@,群组内其他消息
+      // 若关闭了回复所有群组消息，则直接返回空
+      if (!isPrivateChat && !isMentioned && !config.wx_group_all_message) {
+        return '';
+        // return next()
+      }
+
+      // 私聊/群组@
+      let wx_match_prefix = handlePrefixes(content, config)
+      if (wx_match_prefix) {
+        logger.info(wx_match_prefix)
+        const res = await ctx.http.post(config.wx_api, {
+          token: config.wx_token,
+          message: content,
+          channelId: session.channelId,
+        })
+          .catch((err) => {
+            return { error: err.message }
+          })
+        if (res !== undefined) {
+          return res;
+        }
+
+        return 'Error';
+      }
       return next()
     }
 
-    const cleanContent = content.replace(/<at id="\d+"\/>/g, '').trim();
-    logger.info('文本消息:' + cleanContent);
-    logger.info('群组:' + session.channelId)
+    if (session.platform == 'onebot') {
+      // 使用正则表达式确保准确匹配特定的提到格式
+      const mentionRegex = new RegExp(`<at id="${botId}"/>`);
+      const isMentioned = content && mentionRegex.test(content);
 
-    let match_prefix = handlePrefixes(cleanContent, config)
-    if (match_prefix) {
-      logger.info(match_prefix)
-      const res = await ctx.http.post(config.api, {
-        token: config.token,
-        message: cleanContent,
-        channelId: session.channelId,
-      })
-        .catch((err) => {
-          return { error: err.message }
-        })
-      if (res !== undefined) {
-        return res;
+      const cleanContent = content.replace(/<at id="\d+"\/>/g, '').trim();
+
+      logger.info('是否私聊:' + isPrivateChat);
+      logger.info('是否@:' + isMentioned);
+      logger.info('过滤@后的内容:' + cleanContent);
+
+      // 非私聊、非群组@
+      // 群组内其他消息，则直接返回空
+      if (!isPrivateChat && !isMentioned) {
+        return '';
       }
 
-      return 'Error';
+      // 私聊直接返回AI内容
+      if (isPrivateChat) {
+        return next()
+      }
+
+      // 群内@，如果匹配到前缀，请求API结果
+      // 如未匹配到，返回AI内容
+      let match_prefix = handlePrefixes(cleanContent, config)
+      if (match_prefix) {
+        logger.info(match_prefix)
+        const res = await ctx.http.post(config.api, {
+          token: config.token,
+          message: cleanContent,
+          channelId: session.channelId,
+        })
+          .catch((err) => {
+            return { error: err.message }
+          })
+        if (res !== undefined) {
+          return res;
+        }
+
+        return 'Error';
+      }
+      return next()
     }
-    return next()
   }, true)
 }
