@@ -1,7 +1,7 @@
 import { Context, Schema, Logger } from 'koishi'
 
 export const usage = `
-## koishi-plugin-api-handler v1.1.2
+## koishi-plugin-api-handler v1.1.4
 
 1. 配置API地址。
 
@@ -113,8 +113,11 @@ export function apply(ctx: Context, config: Config) {
 
     // logger.info(session);
     logger.info('群组:' + session.channelId)
+    logger.info('发送人:' + session.userId)
     logger.info('原始消息:' + content);
     logger.info('机器人ID:' + botId);
+    // logger.info('session.event:');
+    // logger.info(session.event);
 
     const mentionRegex2 = new RegExp(`private:`);
     const isPrivateChat = session.channelId && mentionRegex2.test(session.channelId);
@@ -185,6 +188,7 @@ export function apply(ctx: Context, config: Config) {
             token: config.token,
             message: cleanContent,
             channelId: session.channelId,
+            userId: session.userId,
           })
             .catch((err) => {
               return { error: err.message }
@@ -208,6 +212,7 @@ export function apply(ctx: Context, config: Config) {
           token: config.token,
           message: cleanContent,
           channelId: session.channelId,
+          userId: session.userId,
         })
           .catch((err) => {
             return { error: err.message }
