@@ -1,7 +1,7 @@
 import { Context, Schema, Logger } from 'koishi'
 
 export const usage = `
-## koishi-plugin-api-handler v1.1.4
+## koishi-plugin-api-handler v1.1.11
 
 1. 配置API地址。
 
@@ -108,6 +108,7 @@ export function handleRegex(sessionContent: string, config: Config) {
 export function apply(ctx: Context, config: Config) {
   ctx.middleware(async (session, next) => {
 
+    let messageId = session.messageId;
     let content = session.content;
     const botId = session.selfId;
 
@@ -147,6 +148,7 @@ export function apply(ctx: Context, config: Config) {
           token: config.wx_token,
           message: content,
           channelId: session.channelId,
+          messageId: messageId,
         })
           .catch((err) => {
             return { error: err.message }
@@ -189,6 +191,7 @@ export function apply(ctx: Context, config: Config) {
             message: cleanContent,
             channelId: session.channelId,
             userId: session.userId,
+            messageId: messageId,
           })
             .catch((err) => {
               return { error: err.message }

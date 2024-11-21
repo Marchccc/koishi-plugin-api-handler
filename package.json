@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-api-handler",
   "description": "识别以特定前缀开头的消息，并通过POST请求调用API，将API的响应直接作为回复发送。",
-  "version": "1.1.4",
+  "version": "1.1.11",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
